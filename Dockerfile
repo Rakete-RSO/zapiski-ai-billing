@@ -9,7 +9,9 @@ COPY . /app
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir poetry
+RUN poetry config virtualenvs.create false
+RUN poetry install --no-interaction --no-ansi
 
 # Make port 80 available to the world outside the container
 EXPOSE 8004
