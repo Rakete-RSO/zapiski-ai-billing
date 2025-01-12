@@ -19,6 +19,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed to determine source branch
+
+      - name: Get source branch
+        id: branch
+        run: |
+          BRANCH=$(git for-each-ref --contains ${{ github.sha }} --format='%(refname:short)' 'refs/heads/*' | head -n 1)
+          echo "source_branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -34,7 +42,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') && steps.branch.outputs.source_branch == 'main' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
