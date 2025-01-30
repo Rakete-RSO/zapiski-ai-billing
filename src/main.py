@@ -55,6 +55,10 @@ async def process_billing(username: str, email: EmailStr):
         # Handle any other unexpected errors
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@app.get("/health-check")
+def health_check():
+    # return status 200
+    return {"status": "ok"}
 
 # Additional configuration for Stripe error handling
 @app.exception_handler(stripe.error.StripeError)
