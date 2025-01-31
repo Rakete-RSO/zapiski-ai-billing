@@ -2,6 +2,7 @@
 import os
 import json
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+import pybreaker
 from pydantic import EmailStr, BaseModel
 import pika
 import threading
@@ -9,8 +10,15 @@ from typing import Optional
 from datetime import datetime
 import logging
 
+from src.user_verification import get_user_verification_client
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+circuit_breaker = pybreaker.CircuitBreaker(
+    fail_max=3,  # Max failures before opening the circuit
+    reset_timeout=10,  # Wait time before trying again (in seconds)
+)
 
 app = FastAPI()
 
@@ -69,6 +77,13 @@ async def process_billing(
     Now using message queue for asynchronous processing
     """
     try:
+        # Get gRPC client
+        # client = get_user_verification_client()
+
+        # # Verify user exists
+        # if not client.verify_user(billing_request.username):
+        #     raise HTTPException(status_code=404, detail="User not found")
+
         # Publish billing request to queue
         background_tasks.add_task(
             publish_billing_event, "billing_request", billing_request.dict()
@@ -80,6 +95,10 @@ async def process_billing(
             "username": billing_request.username,
         }
 
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(
+            status_code=503, detail="Service unavailable (Circuit Open)"
+        )
     except Exception as e:
         # Handle any other unexpected errors
         raise HTTPException(status_code=500, detail="Internal server error")
